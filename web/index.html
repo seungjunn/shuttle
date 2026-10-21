@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f5f8b">
+<title>꿈에그린 셔틀</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#f2f5f8; --card:#ffffff; --ink:#15212b; --muted:#5b6b78; --line:#dde4ea;
+  --accent:#1f5f8b; --accent-ink:#ffffff; --soft:#e4eef7; --soft-ink:#164a6d;
+  --good:#1e7a4a; --good-soft:#dff3e7; --warn:#a2541a; --warn-soft:#fbe9d7; --bad:#9b2c2c; --bad-soft:#f9e0e0;
+  --r1:#1f5f8b; --r2:#b7571b; --now:#fff3c4; --dim:.45;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f161c; --card:#18232c; --ink:#e8eef3; --muted:#9bacb9; --line:#2a3842;
+    --accent:#5aa3d8; --accent-ink:#06121b; --soft:#1d3144; --soft-ink:#bcd8ee;
+    --good:#5fc78c; --good-soft:#163424; --warn:#f0a35e; --warn-soft:#3b2614; --bad:#f08a8a; --bad-soft:#3d1c1c;
+    --r1:#5aa3d8; --r2:#f0a35e; --now:#3a3414; --dim:.4;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f161c; --card:#18232c; --ink:#e8eef3; --muted:#9bacb9; --line:#2a3842;
+  --accent:#5aa3d8; --accent-ink:#06121b; --soft:#1d3144; --soft-ink:#bcd8ee;
+  --good:#5fc78c; --good-soft:#163424; --warn:#f0a35e; --warn-soft:#3b2614; --bad:#f08a8a; --bad-soft:#3d1c1c;
+  --r1:#5aa3d8; --r2:#f0a35e; --now:#3a3414; --dim:.4;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.45;-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding:calc(10px + env(safe-area-inset-top)) 16px 10px}
+header .row{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:760px;margin:0 auto}
+header h1{font-size:1.15rem;margin:0;font-weight:700;letter-spacing:-.01em}
+header .clock{font-variant-numeric:tabular-nums;font-size:1.05rem;font-weight:600;opacity:.95}
+main{max-width:760px;margin:0 auto;padding:14px 16px calc(28px + env(safe-area-inset-bottom))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:.95rem;margin:0 0 10px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+.status{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.85rem;font-weight:600;background:var(--soft);color:var(--soft-ink)}
+.pill.good{background:var(--good-soft);color:var(--good)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.route{display:inline-block;min-width:3.2em;text-align:center;padding:2px 7px;border-radius:7px;font-size:.78rem;font-weight:700;color:#fff}
+.route.r1{background:var(--r1)} .route.r2{background:var(--r2)}
+label.sel{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
+select{width:100%;font:inherit;font-size:1rem;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.nextbox{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-top:12px}
+.nextbox .big{font-size:2.6rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.nextbox .left{font-size:1.05rem;color:var(--muted)}
+.nextbox .left b{color:var(--good);font-size:1.3rem}
+.nextbox .left b.soon{color:var(--warn)}
+.after{margin:10px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.after li{display:flex;gap:10px;align-items:center;font-variant-numeric:tabular-nums;color:var(--muted);font-size:.95rem}
+.after li span.t{color:var(--ink);font-weight:600;min-width:3.4em}
+.empty{color:var(--muted);margin-top:10px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{flex:1;font:inherit;font-size:.92rem;font-weight:600;padding:9px 4px;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.panel{display:none} .panel.active{display:block}
+.trip{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:10px 0;border-top:1px solid var(--line);align-items:start}
+.trip:first-of-type{border-top:0;padding-top:0}
+.trip .hd{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:3.6em}
+.trip .no{font-size:.78rem;color:var(--muted)}
+.trip .stops{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;font-size:.93rem}
+.trip .stops .s{white-space:nowrap} .trip .stops .s b{font-variant-numeric:tabular-nums;margin-right:3px}
+.trip .stops .arrow{color:var(--muted);font-size:.8rem}
+.trip.past{opacity:var(--dim)} .trip.next{background:var(--now);margin:0 -16px;padding-left:16px;padding-right:16px;border-radius:0}
+.trip.off{opacity:.65} .trip.off .stops{text-decoration:line-through;text-decoration-color:var(--bad)}
+.trip .sub{grid-column:2;font-size:.82rem;color:var(--warn)}
+.tablewrap{overflow-x:auto;margin:0 -16px;padding:0 16px;-webkit-overflow-scrolling:touch}
+table{border-collapse:separate;border-spacing:0;font-size:.86rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:center}
+th{position:sticky;top:0;background:var(--card);color:var(--muted);font-weight:600;font-size:.78rem;line-height:1.2;z-index:2;vertical-align:bottom}
+th:first-child,td:first-child{position:sticky;left:0;background:var(--card);z-index:3;text-align:left;box-shadow:1px 0 0 var(--line)}
+th:first-child{z-index:4}
+tr.past td{opacity:var(--dim)} tr.next td{background:var(--now)} tr.next td:first-child{background:var(--now)}
+td.sel,th.sel{background:var(--soft);color:var(--soft-ink);font-weight:700}
+tr.next td.sel{background:var(--soft)}
+tr.hasnote td:first-child::after{content:" ⚠";color:var(--warn);font-size:.75rem}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+ul.notes{margin:0;padding-left:1.2em} ul.notes li{margin:4px 0}
+.rot{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:.92rem;align-items:center}
+.rot .k{color:var(--muted)} .rot .v{white-space:nowrap}
+img.orig{width:100%;height:auto;border-radius:10px;border:1px solid var(--line)}
+footer{text-align:center;color:var(--muted);font-size:.8rem;margin-top:20px}
+footer a{color:var(--accent)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header><div class="row"><h1>🚌 꿈에그린 셔틀</h1><div class="clock" id="clock">--:--</div></div></header>
+<main>
+  <section class="card">
+    <div class="status" id="status"></div>
+    <div class="rot" id="rotation"></div>
+  </section>
+
+  <section class="card">
+    <h2>다음 셔틀</h2>
+    <label class="sel" for="stop">내 정류장</label>
+    <select id="stop"></select>
+    <div id="nextBox"></div>
+  </section>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" data-tab="morning">오전</button>
+    <button role="tab" data-tab="day">낮·오후</button>
+    <button role="tab" data-tab="info">안내</button>
+    <button role="tab" data-tab="orig">원본</button>
+  </div>
+
+  <section class="panel card" id="tab-morning">
+    <h2>오전 (회차 1~9) · 출근·등교만 가능</h2>
+    <div id="morningList"></div>
+  </section>
+
+  <section class="panel card" id="tab-day">
+    <h2>낮·오후 순환 (회차 10~26)</h2>
+    <div class="tablewrap"><table id="dayTable"></table></div>
+    <div class="legend"><span><i style="background:var(--now)"></i>다음 운행</span><span><i style="background:var(--soft)"></i>내 정류장</span><span>⚠ 퇴근시간 지연 가능</span></div>
+  </section>
+
+  <section class="panel card" id="tab-info">
+    <h2>비고</h2>
+    <ul class="notes" id="notes"></ul>
+    <h2 style="margin-top:16px">올해·내년 공휴일 (운행 없음)</h2>
+    <div id="holidays" style="font-size:.9rem;color:var(--muted)"></div>
+  </section>
+
+  <section class="panel card" id="tab-orig">
+    <h2>시간표 원본 (<span id="srcDate"></span> 기준)</h2>
+    <a href="original.jpg" target="_blank" rel="noopener"><img class="orig" src="original.jpg" alt="셔틀버스 시간표 원본"></a>
+  </section>
+
+  <footer>
+    <span id="apkLink" class="hidden"><a href="assets/shuttle.apk">📱 안드로이드 앱(APK) 받기</a> · </span>
+    <a href="#" id="themeBtn">테마</a>
+  </footer>
+</main>
+<script src="timetable.js"></script>
+<script>
+(function(){
+  const T = window.TIMETABLE;
+  const $ = (s)=>document.querySelector(s);
+  const DAYS = ["일","월","화","수","목","금","토"];
+  const pad = (n)=>String(n).padStart(2,"0");
+  const ymd = (d)=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  const toMin = (t)=>{ const [h,m]=t.split(":").map(Number); return h*60+m; };
+  const routeCls = (r)=>r.startsWith("1")?"r1":"r2";
+  const routeTag = (r)=>`<span class="route ${routeCls(r)}">${r}</span>`;
+
+  // ?t=2026-10-22T08:00 으로 시각을 바꿔 볼 수 있음 (확인용)
+  const dbg = new URLSearchParams(location.search).get("t");
+  const dbgBase = dbg ? new Date(dbg) : null; const dbgStart = Date.now();
+  const now = ()=> dbgBase ? new Date(dbgBase.getTime() + (Date.now()-dbgStart)) : new Date();
+
+  function dayStatus(d){
+    const key = ymd(d), w = d.getDay();
+    if (T.holidays[key]) return {ok:false, cls:"bad", text:"공휴일 운행 없음 · "+T.holidays[key]};
+    if (w===0||w===6) return {ok:false, cls:"bad", text:"주말 운행 없음"};
+    return {ok:true, cls:"good", text:"오늘 운행"};
+  }
+  function nextServiceDay(d){
+    const x = new Date(d); x.setHours(12,0,0,0);
+    for (let i=0;i<30;i++){ x.setDate(x.getDate()+1); if (dayStatus(x).ok) return x; }
+    return null;
+  }
+  function mondayOf(d){ const x=new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x; }
+  function rotation(d){
+    const a = mondayOf(new Date(T.rotation.anchor_monday+"T00:00:00")), m = mondayOf(d);
+    const weeks = Math.round((m-a)/(7*864e5));
+    const swap = ((weeks%2)+2)%2===1;
+    const out = {};
+    for (const [veh,route] of Object.entries(T.rotation.anchor)) out[veh] = swap ? (route.startsWith("1")?"2호차":"1호차") : route;
+    return out;
+  }
+
+  // 정류장별 출발 이벤트 (각 회차에서 해당 정류장의 첫 등장 = 출발/경유, 도착 열은 제외)
+  function events(){
+    const ev = [];   // {stop,min,t,no,route,kind}
+    for (const tr of T.morning){
+      if (tr.suspended) continue;
+      const seen = new Set();
+      for (const [name,t] of tr.stops){ if (!t || seen.has(name)) continue; seen.add(name); ev.push({stop:name,min:toMin(t),t,no:tr.no,route:tr.route,kind:"오전"}); }
+    }
+    for (const tr of T.day.trips){
+      const seen = new Set();
+      T.day.stops.forEach((name,i)=>{ if (seen.has(name)) return; seen.add(name); ev.push({stop:name,min:toMin(tr.times[i]),t:tr.times[i],no:tr.no,route:tr.route,kind:"",note:tr.note}); });
+    }
+    ev.sort((a,b)=>a.min-b.min);
+    return ev;
+  }
+  const EVENTS = events();
+  const STOPS = (()=>{ const s=[]; for (const n of T.day.stops) if(!s.includes(n)) s.push(n); for (const e of EVENTS) if(!s.includes(e.stop)) s.push(e.stop); return s; })();
+
+  // ---- 정류장 선택 ----
+  const sel = $("#stop");
+  for (const s of STOPS){ const o=document.createElement("option"); o.value=s; o.textContent=s; sel.appendChild(o); }
+  let stop = null; try{ stop = localStorage.getItem("shuttle.stop"); }catch(e){}
+  if (!STOPS.includes(stop)) stop = STOPS[0]; { const q=new URLSearchParams(location.search).get("stop"); if (q && STOPS.includes(q)) stop = q; }
+  sel.value = stop;
+  sel.addEventListener("change", ()=>{ stop = sel.value; try{ localStorage.setItem("shuttle.stop",stop); }catch(e){} render(); });
+
+  // ---- 탭 ----
+  let tab = new URLSearchParams(location.search).get("tab");
+  function showTab(name){
+    tab = name;
+    document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===name));
+    document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active", p.id==="tab-"+name));
+  }
+  document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click", ()=>showTab(b.dataset.tab)));
+
+  // ---- 테마 ----
+  try{ const th=new URLSearchParams(location.search).get("theme")||localStorage.getItem("shuttle.theme"); if(th) document.documentElement.dataset.theme=th; }catch(e){}
+  $("#themeBtn").addEventListener("click",(e)=>{ e.preventDefault();
+    const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+    const nx = cur==="dark"?"light":"dark"; document.documentElement.dataset.theme=nx; try{ localStorage.setItem("shuttle.theme",nx);}catch(e){} });
+
+  // ---- 정적 부분 ----
+  $("#notes").innerHTML = T.notes.map(n=>`<li>${n}</li>`).join("");
+  $("#srcDate").textContent = T.source_date;
+  {
+    const y = now().getFullYear();
+    const byYear = {};
+    for (const [d,n] of Object.entries(T.holidays)){ if (+d.slice(0,4) < y) continue; const x=new Date(d+"T00:00:00"); (byYear[d.slice(0,4)] = byYear[d.slice(0,4)] || []).push(`${d.slice(5).replace("-","/")}(${DAYS[x.getDay()]}) ${n}`); }
+    $("#holidays").innerHTML = Object.entries(byYear).map(([yr,items])=>`<p style="margin:6px 0"><b style="color:var(--ink)">${yr}</b> · ${items.join(" · ")}</p>`).join("") || "(없음)";
+  }
+  // 오전 목록
+  $("#morningList").innerHTML = T.morning.map(tr=>{
+    const stops = tr.stops.map(([n,t],i)=>`${i?'<span class="arrow">›</span>':''}<span class="s">${t?`<b>${t}</b>`:""}${n}</span>`).join("");
+    return `<div class="trip ${tr.suspended?"off":""}" data-no="${tr.no}" data-min="${toMin(tr.stops[0][1])}"><div class="hd">${routeTag(tr.route)}<span class="no">${tr.no}회차</span></div><div class="stops">${stops}</div>${tr.suspended?`<div class="sub">현재 운행 안 함 · ${tr.suspended}</div>`:""}</div>`;
+  }).join("");
+  // 오후 표
+  {
+    const head = `<tr><th>회차</th>${T.day.stops.map((s,i)=>`<th data-col="${i}">${s.replace("(","<br>(")}</th>`).join("")}</tr>`;
+    const rows = T.day.trips.map(tr=>`<tr data-no="${tr.no}" data-min="${toMin(tr.times[0])}" data-end="${toMin(tr.times[tr.times.length-1])}" class="${tr.note?"hasnote":""}"><td>${tr.no} ${routeTag(tr.route)}</td>${tr.times.map((t,i)=>`<td data-col="${i}">${t}</td>`).join("")}</tr>`).join("");
+    $("#dayTable").innerHTML = head + rows;
+  }
+
+  // ---- 동적 렌더 ----
+  function fmtLeft(min){
+    if (min <= 0) return "곧 출발";
+    if (min < 60) return `${min}분 후`;
+    return min%60 ? `${Math.floor(min/60)}시간 ${min%60}분 후` : `${Math.floor(min/60)}시간 후`;
+  }
+  function render(){
+    const d = now(), cur = d.getHours()*60+d.getMinutes(), st = dayStatus(d);
+    $("#clock").textContent = `${d.getMonth()+1}/${d.getDate()}(${DAYS[d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    $("#status").innerHTML = `<span class="pill ${st.cls}">${st.ok?"●":"○"} ${st.text}</span>` + (st.ok ? "" : (()=>{ const n=nextServiceDay(d); return n?`<span class="pill">다음 운행 ${n.getMonth()+1}/${n.getDate()}(${DAYS[n.getDay()]})</span>`:""; })());
+    const nsd = st.ok ? null : nextServiceDay(d);
+    const rot = rotation(nsd || d);
+    $("#rotation").innerHTML = `<span class="k">${nsd ? `${nsd.getMonth()+1}/${nsd.getDate()}(${DAYS[nsd.getDay()]}) 배정` : "이번주 배정"}</span>${Object.entries(rot).map(([v,r])=>`<span class="v">${v} → ${routeTag(r)}</span>`).join("")}`;
+
+    // 다음 셔틀
+    const box = $("#nextBox");
+    const mine = EVENTS.filter(e=>e.stop===stop);
+    const sec = d.getSeconds();
+    if (!st.ok){
+      const first = mine[0];
+      box.innerHTML = `<p class="empty">${st.text}. ${first?`다음 운행일 첫차 ${first.t} (${first.no}회차 ${first.route})`:""}</p>`;
+    } else {
+      const up = mine.filter(e=>e.min*60 >= cur*60+sec);
+      if (!up.length){
+        const first = mine[0], n = nextServiceDay(d);
+        box.innerHTML = `<p class="empty">오늘 운행이 끝났습니다. ${first&&n?`다음 운행일 ${n.getMonth()+1}/${n.getDate()}(${DAYS[n.getDay()]}) 첫차 ${first.t} (${first.no}회차 ${first.route})`:""}</p>`;
+      } else {
+        const n = up[0], left = n.min - cur;
+        box.innerHTML = `<div class="nextbox"><span class="big">${n.t}</span><span class="left"><b class="${left<=5?"soon":""}">${fmtLeft(left)}</b> · ${n.no}회차 ${routeTag(n.route)}${n.kind?` <span class="pill" style="font-size:.75rem">${n.kind}</span>`:""}</span></div>`
+          + (n.note?`<div class="sub" style="color:var(--warn);font-size:.85rem;margin-top:4px">⚠ ${n.note}</div>`:"")
+          + `<ul class="after">${up.slice(1,4).map(e=>`<li><span class="t">${e.t}</span>${routeTag(e.route)}<span>${e.no}회차 · ${fmtLeft(e.min-cur)}</span></li>`).join("")}</ul>`;
+      }
+    }
+
+    // 표 강조: 지난 회차 흐리게, 다음 회차 표시, 내 정류장 열
+    const firstCol = T.day.stops.indexOf(stop);
+    document.querySelectorAll("#dayTable [data-col]").forEach(c=>c.classList.toggle("sel", +c.dataset.col===firstCol));
+    // 다음 회차 = 내 정류장을 지나는 시각이 아직 안 지난 첫 회차, 지난 회차 = 내 정류장 시각이 지난 회차
+    let marked = false;
+    document.querySelectorAll("#dayTable tr[data-no]").forEach(r=>{
+      const tr = T.day.trips.find(t=>t.no===+r.dataset.no);
+      const at = firstCol >= 0 ? toMin(tr.times[firstCol]) : +r.dataset.min;
+      const past = st.ok && at*60 < cur*60+sec;
+      r.classList.toggle("past", past);
+      const isNext = st.ok && !marked && !past; if (isNext) marked = true;
+      r.classList.toggle("next", isNext);
+    });
+    let mm = false;
+    document.querySelectorAll("#morningList .trip").forEach(r=>{
+      const tr = T.morning.find(t=>t.no===+r.dataset.no);
+      const hit = tr.stops.find(([n,t])=>n===stop && t);
+      const at = hit ? toMin(hit[1]) : +r.dataset.min + 25;   // 내 정류장 시각이 없으면 출발 25분 뒤를 종료로 봄
+      const past = st.ok && at*60 < cur*60+sec;
+      r.classList.toggle("past", past);
+      const isNext = st.ok && !mm && !past && !r.classList.contains("off") && !!hit; if (isNext) mm = true;
+      r.classList.toggle("next", isNext);
+    });
+  }
+
+  // 처음 열 때: 시간대에 맞춰 (09시 전 = 오전, 그 외 = 낮·오후). ?tab=morning|day|info|orig 로 지정 가능
+  if (!tab || !document.getElementById("tab-"+tab)) tab = (now().getHours() < 9) ? "morning" : "day";
+  showTab(tab);
+  render();
+  setInterval(render, 10000);
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) render(); });
+
+  // 서버에서 열었을 때만 APK 링크 (앱 내부 파일로 열었을 때는 숨김)
+  if (location.protocol.startsWith("http") && !/ShuttleApp/.test(navigator.userAgent)){
+    fetch("assets/shuttle.apk",{method:"HEAD"}).then(r=>{ if(r.ok) $("#apkLink").classList.remove("hidden"); }).catch(()=>{});
+  }
+})();
+</script>
+</body>
+</html>

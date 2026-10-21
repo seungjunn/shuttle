@@ -1,0 +1,20 @@
+# 꿈에그린 셔틀 시간표 웹. 항상 켜 둠.
+#   systemctl --user enable --now shuttle-web
+#   journalctl --user -u shuttle-web -f
+[Unit]
+Description=꿈에그린 셔틀 시간표 웹
+# user 유닛이라 시스템의 network-online/tailscaled 를 기다릴 수 없음.
+# 대신 주소를 못 묶으면 프로그램이 종료하고 Restart 로 10초마다 다시 시도한다.
+
+[Service]
+Type=simple
+WorkingDirectory=%h/shuttle
+Environment=PYTHONUNBUFFERED=1
+Environment=SHUTTLE_HOSTS=tailscale,192.168.100.140
+Environment=SHUTTLE_PORT=8782
+ExecStart=/usr/bin/python3 %h/shuttle/shuttle_web.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

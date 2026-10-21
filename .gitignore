@@ -1,0 +1,10 @@
+# assets/shuttle.apk 는 서버 다운로드용으로 포함 (1.2MB)
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/keystore/*.jks
+android/keystore/keystore.properties
+android/app/src/main/assets/
+.omc/
+__pycache__/
