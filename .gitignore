@@ -8,3 +8,4 @@ android/keystore/keystore.properties
 android/app/src/main/assets/
 .omc/
 __pycache__/
+dist/
