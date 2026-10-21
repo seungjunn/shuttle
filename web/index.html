@@ -35,6 +35,11 @@ header{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--acce
 header .row{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:760px;margin:0 auto}
 header h1{font-size:1.15rem;margin:0;font-weight:700;letter-spacing:-.01em}
 header .clock{font-variant-numeric:tabular-nums;font-size:1.05rem;font-weight:600;opacity:.95}
+header .right{display:flex;align-items:center;gap:10px}
+header button.rf{font:inherit;font-size:1.25rem;line-height:1;width:36px;height:36px;border:0;border-radius:10px;background:rgba(255,255,255,.18);color:var(--accent-ink);cursor:pointer;display:flex;align-items:center;justify-content:center}
+header button.rf:active{background:rgba(255,255,255,.35)}
+header button.rf.spin{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 main{max-width:760px;margin:0 auto;padding:14px 16px calc(28px + env(safe-area-inset-bottom))}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
 .card h2{font-size:.95rem;margin:0 0 10px;color:var(--muted);font-weight:600;letter-spacing:.02em}
@@ -78,6 +83,19 @@ tr.past td{opacity:var(--dim)} tr.next td{background:var(--now)} tr.next td:firs
 td.sel,th.sel{background:var(--soft);color:var(--soft-ink);font-weight:700}
 tr.next td.sel{background:var(--soft)}
 tr.hasnote td:first-child::after{content:" ⚠";color:var(--warn);font-size:.75rem}
+.strip{position:relative;padding-left:28px;margin-top:8px}
+.strip::before{content:"";position:absolute;left:10px;top:14px;bottom:14px;width:3px;background:var(--line);border-radius:2px}
+.strip .st{position:relative;height:30px;display:flex;align-items:center;font-size:.9rem;color:var(--muted);white-space:nowrap}
+.strip .st::before{content:"";position:absolute;left:-23px;width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--muted);box-sizing:border-box}
+.strip .st.sel{color:var(--soft-ink);font-weight:700} .strip .st.sel::before{border-color:var(--accent);background:var(--soft)}
+.strip .bus{position:absolute;left:0;right:0;transform:translateY(-50%);display:flex;align-items:center;transition:top 1s ease;z-index:2;pointer-events:none}
+.strip .bus .ico{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.strip .bus.r1 .ico{background:var(--r1)} .strip .bus.r2 .ico{background:var(--r2)}
+.strip .bus .lbl{margin-left:auto;font-size:.74rem;font-weight:700;color:#fff;border-radius:6px;padding:2px 7px;white-space:nowrap}
+.strip .bus.r1 .lbl{background:var(--r1)} .strip .bus.r2 .lbl{background:var(--r2)}
+.strip .bus.wait{opacity:.55}
+.busline{font-size:.92rem;margin:4px 0}
+.busline b{color:var(--ink)}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:10px}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
 ul.notes{margin:0;padding-left:1.2em} ul.notes li{margin:4px 0}
@@ -90,7 +108,7 @@ footer a{color:var(--accent)}
 </style>
 </head>
 <body>
-<header><div class="row"><h1>🚌 꿈에그린 셔틀</h1><div class="clock" id="clock">--:--</div></div></header>
+<header><div class="row"><h1>🚌 꿈에그린 셔틀</h1><div class="right"><div class="clock" id="clock">--:--</div><button class="rf" id="refreshBtn" aria-label="새로고침" title="새로고침">↻</button></div></div></header>
 <main>
   <section class="card">
     <div class="status" id="status"></div>
@@ -102,6 +120,11 @@ footer a{color:var(--accent)}
     <label class="sel" for="stop">내 정류장</label>
     <select id="stop"></select>
     <div id="nextBox"></div>
+  </section>
+
+  <section class="card">
+    <h2>지금 버스 위치 <span style="font-weight:400">· 시간표 기준 추정</span></h2>
+    <div id="busMap"></div>
   </section>
 
   <div class="tabs" role="tablist">
@@ -239,6 +262,63 @@ footer a{color:var(--accent)}
     $("#dayTable").innerHTML = head + rows;
   }
 
+  // ---- 버스 위치 (시간표 기준 추정) ----
+  const MORNING_MIN = 25;   // 오전 회차는 경유 시각이 없어 출발 후 25분 안에 균등하게 지나간다고 가정
+  const TRIPS = (()=>{
+    const list = [];
+    for (const tr of T.morning){
+      if (tr.suspended) continue;
+      const dep = toMin(tr.stops[0][1])*60, n = tr.stops.length;
+      list.push({route:tr.route, no:tr.no, kind:"morning", est:true,
+        stops: tr.stops.map(([name,t],i)=>({name, sec: t ? toMin(t)*60 : dep + Math.round(MORNING_MIN*60*i/(n-1))}))});
+    }
+    for (const tr of T.day.trips)
+      list.push({route:tr.route, no:tr.no, kind:"day", est:false, stops: T.day.stops.map((name,i)=>({name, sec: toMin(tr.times[i])*60}))});
+    return list.sort((a,b)=>a.stops[0].sec-b.stops[0].sec);
+  })();
+  const fmtSec = (x)=>`${pad(Math.floor(x/3600))}:${pad(Math.floor(x/60)%60)}`;
+  function busPos(b, nowSec){
+    const s = b.stops;
+    if (nowSec <= s[0].sec) return {i:0, f:0};
+    for (let i=0;i<s.length-1;i++) if (nowSec < s[i+1].sec){ const span = s[i+1].sec - s[i].sec; return {i, f: span>0 ? (nowSec-s[i].sec)/span : 0}; }
+    return {i:s.length-1, f:0};
+  }
+  const ROW = 30;
+  function stripHtml(stops, buses, nowSec, wait){
+    const rows = stops.map(x=>`<div class="st ${x.name===stop?"sel":""}">${x.name}</div>`).join("");
+    const marks = buses.map(b=>{ const p=busPos(b,nowSec); return `<div class="bus ${routeCls(b.route)} ${wait?"wait":""}" data-id="${b.no}" style="top:${(p.i+p.f)*ROW+ROW/2}px"><span class="ico">🚌</span><span class="lbl">${b.route} ${b.no}회차${wait?" 대기":""}</span></div>`; }).join("");
+    return `<div class="strip" style="height:${stops.length*ROW}px">${rows}${marks}</div>`;
+  }
+  let mapKey = "";
+  function renderMap(st, nowSec){
+    const box = $("#busMap");
+    if (!st.ok){ box.innerHTML = `<p class="empty">${st.text}</p>`; mapKey=""; return; }
+    const act = TRIPS.filter(b=>nowSec >= b.stops[0].sec && nowSec <= b.stops[b.stops.length-1].sec + 60);
+    const next = act.length ? null : TRIPS.find(b=>b.stops[0].sec > nowSec);
+    const key = (act.length ? act.map(b=>b.no).join(",") : "wait"+(next?next.no:"")) + "|" + stop;
+    const lines = act.map(b=>{
+      const p = busPos(b,nowSec), s = b.stops;
+      const where = p.i >= s.length-1 ? `<b>${s[p.i].name}</b> 종점 도착` : `${s[p.i].name} 지남 → 다음 <b>${s[p.i+1].name}</b> ${fmtSec(s[p.i+1].sec)}${b.est?" 추정":""}`;
+      return `<div class="busline">${routeTag(b.route)} ${b.no}회차 · ${where}</div>`;
+    }).join("");
+    if (key !== mapKey){
+      mapKey = key;
+      let html = `<div id="busLines">${lines}</div>`;
+      if (!act.length){
+        html = `<p class="empty">${next ? `운행 중인 버스가 없습니다. 다음 출발 <b>${fmtSec(next.stops[0].sec)}</b> ${next.stops[0].name} (${next.no}회차 ${next.route})` : "오늘 운행이 끝났습니다."}</p>`;
+        if (next) html += stripHtml(next.kind==="day" ? T.day.stops.map(n=>({name:n})) : next.stops, [next], nowSec, true);
+      } else {
+        const dayB = act.filter(b=>b.kind==="day");
+        if (dayB.length) html += stripHtml(T.day.stops.map(n=>({name:n})), dayB, nowSec, false);
+        for (const b of act.filter(b=>b.kind==="morning")) html += stripHtml(b.stops, [b], nowSec, false);
+      }
+      box.innerHTML = html;
+    } else if (act.length){
+      $("#busLines").innerHTML = lines;
+      for (const b of act){ const p=busPos(b,nowSec); const el=box.querySelector(`.bus[data-id="${b.no}"]`); if (el) el.style.top = `${(p.i+p.f)*ROW+ROW/2}px`; }
+    }
+  }
+
   // ---- 동적 렌더 ----
   function fmtLeft(min){
     if (min <= 0) return "곧 출발";
@@ -273,6 +353,8 @@ footer a{color:var(--accent)}
       }
     }
 
+    renderMap(st, cur*60+sec);
+
     // 표 강조: 지난 회차 흐리게, 다음 회차 표시, 내 정류장 열
     const firstCol = T.day.stops.indexOf(stop);
     document.querySelectorAll("#dayTable [data-col]").forEach(c=>c.classList.toggle("sel", +c.dataset.col===firstCol));
@@ -302,8 +384,24 @@ footer a{color:var(--accent)}
   if (!tab || !document.getElementById("tab-"+tab)) tab = (now().getHours() < 9) ? "morning" : "day";
   showTab(tab);
   render();
-  setInterval(render, 10000);
+  setInterval(render, 5000);
   document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) render(); });
+
+  // ---- 새로고침: 버튼, 10분마다(조작 중이 아닐 때), 화면에 다시 돌아왔을 때(5분 이상 지났으면) ----
+  const LOADED_AT = Date.now();
+  let lastTouch = Date.now();
+  ["touchstart","scroll","keydown","pointerdown"].forEach(ev=>addEventListener(ev, ()=>{ lastTouch = Date.now(); }, {passive:true}));
+  function hardRefresh(){
+    $("#refreshBtn").classList.add("spin");
+    const u = new URL(location.href);
+    u.searchParams.set("tab", tab);      // 보고 있던 탭 유지 (정류장·테마는 localStorage)
+    u.searchParams.delete("t");
+    u.searchParams.set("r", String(Date.now()));   // 캐시 우회
+    location.replace(u.toString());
+  }
+  $("#refreshBtn").addEventListener("click", hardRefresh);
+  setInterval(()=>{ if (!document.hidden && Date.now()-lastTouch > 30000) hardRefresh(); }, 10*60*1000);
+  document.addEventListener("visibilitychange", ()=>{ if (!document.hidden && Date.now()-LOADED_AT > 5*60*1000) hardRefresh(); });
 
   // 서버에서 열었을 때만 APK 링크 (앱 내부 파일로 열었을 때는 숨김)
   if (location.protocol.startsWith("http") && !/ShuttleApp/.test(navigator.userAgent)){
