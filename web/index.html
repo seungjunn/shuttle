@@ -40,7 +40,7 @@ header button.rf{font:inherit;font-size:1.25rem;line-height:1;width:36px;height:
 header button.rf:active{background:rgba(255,255,255,.35)}
 header button.rf.spin{animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-main{max-width:760px;margin:0 auto;padding:14px 16px calc(28px + env(safe-area-inset-bottom))}
+main{max-width:760px;margin:0 auto;padding:14px 16px calc(80px + env(safe-area-inset-bottom))}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
 .card h2{font-size:.95rem;margin:0 0 10px;color:var(--muted);font-weight:600;letter-spacing:.02em}
 .status{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -103,8 +103,18 @@ ul.notes{margin:0;padding-left:1.2em} ul.notes li{margin:4px 0}
 .rot{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:.92rem;align-items:center}
 .rot .k{color:var(--muted)} .rot .v{white-space:nowrap}
 img.orig{width:100%;height:auto;border-radius:10px;border:1px solid var(--line)}
-footer{text-align:center;color:var(--muted);font-size:.8rem;margin-top:20px}
-footer a{color:var(--accent)}
+nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));display:flex;justify-content:space-around;gap:4px}
+nav.bottom button,nav.bottom a{flex:1;max-width:120px;font:inherit;font-size:.72rem;font-weight:600;color:var(--muted);background:transparent;border:0;border-radius:10px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;cursor:pointer}
+nav.bottom .ic{font-size:1.25rem;line-height:1}
+nav.bottom button:active,nav.bottom a:active{background:var(--soft);color:var(--soft-ink)}
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:none}
+.sheet.open{display:block}
+.sheet-in{position:absolute;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;background:var(--card);border-radius:18px 18px 0 0;padding:12px 16px calc(20px + env(safe-area-inset-bottom));max-width:760px;margin:0 auto;animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(40px)}to{transform:none}}
+.sheet-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.sheet-hd h2{font-size:1.05rem;margin:0;color:var(--ink)}
+.sheet-hd button{font:inherit;font-size:1.1rem;width:36px;height:36px;border:0;border-radius:10px;background:var(--soft);color:var(--soft-ink);cursor:pointer}
+.sheet h3{font-size:.9rem;color:var(--muted);margin:14px 0 6px;font-weight:600}
 .hidden{display:none}
 </style>
 </head>
@@ -131,8 +141,6 @@ footer a{color:var(--accent)}
   <div class="tabs" role="tablist">
     <button role="tab" data-tab="morning">오전</button>
     <button role="tab" data-tab="day">낮·오후</button>
-    <button role="tab" data-tab="info">안내</button>
-    <button role="tab" data-tab="orig">원본</button>
   </div>
 
   <section class="panel card" id="tab-morning">
@@ -146,23 +154,32 @@ footer a{color:var(--accent)}
     <div class="legend"><span><i style="background:var(--now)"></i>다음 운행</span><span><i style="background:var(--soft)"></i>내 정류장</span><span>⚠ 퇴근시간 지연 가능</span></div>
   </section>
 
-  <section class="panel card" id="tab-info">
-    <h2>비고</h2>
-    <ul class="notes" id="notes"></ul>
-    <h2 style="margin-top:16px">올해·내년 공휴일 (운행 없음)</h2>
-    <div id="holidays" style="font-size:.9rem;color:var(--muted)"></div>
-  </section>
-
-  <section class="panel card" id="tab-orig">
-    <h2>시간표 원본 (<span id="srcDate"></span> 기준)</h2>
-    <a href="original.jpg" target="_blank" rel="noopener"><img class="orig" src="original.jpg" alt="셔틀버스 시간표 원본"></a>
-  </section>
-
-  <footer>
-    <span id="apkLink" class="hidden"><a href="assets/shuttle.apk">📱 안드로이드 앱(APK) 받기</a> · </span>
-    <a href="#" id="themeBtn">테마</a>
-  </footer>
 </main>
+
+<nav class="bottom">
+  <button data-sheet="info"><span class="ic">ℹ️</span>안내</button>
+  <button data-sheet="orig"><span class="ic">🖼️</span>원본 시간표</button>
+  <button id="themeBtn"><span class="ic">🌓</span>테마</button>
+  <a id="apkLink" class="hidden" href="assets/shuttle.apk"><span class="ic">📱</span>앱 받기</a>
+</nav>
+
+<div class="sheet" id="sheet-info" role="dialog" aria-label="안내">
+  <div class="sheet-in">
+    <div class="sheet-hd"><h2>안내</h2><button class="close" aria-label="닫기">✕</button></div>
+    <h3>비고</h3>
+    <ul class="notes" id="notes"></ul>
+    <h3>올해·내년 공휴일 (운행 없음)</h3>
+    <div id="holidays" style="font-size:.9rem;color:var(--muted)"></div>
+    <h3>차량 배정</h3>
+    <p style="margin:0;font-size:.9rem;color:var(--muted)">1단지 차량과 2단지 차량이 매주 1호차·2호차 노선을 바꿔 운행합니다. 상단의 "이번주 배정"은 시간표 사진 날짜(<span id="srcDate2"></span>) 기준으로 계산한 값입니다.</p>
+  </div>
+</div>
+<div class="sheet" id="sheet-orig" role="dialog" aria-label="원본 시간표">
+  <div class="sheet-in">
+    <div class="sheet-hd"><h2>시간표 원본 (<span id="srcDate"></span> 기준)</h2><button class="close" aria-label="닫기">✕</button></div>
+    <a href="original.jpg" target="_blank" rel="noopener"><img class="orig" src="original.jpg" alt="셔틀버스 시간표 원본"></a>
+  </div>
+</div>
 <script src="timetable.js"></script>
 <script>
 (function(){
@@ -236,15 +253,23 @@ footer a{color:var(--accent)}
   }
   document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click", ()=>showTab(b.dataset.tab)));
 
+  // ---- 바닥 메뉴 시트 (안내 / 원본) ----
+  function openSheet(name){ document.querySelectorAll(".sheet").forEach(x=>x.classList.toggle("open", x.id==="sheet-"+name)); }
+  function closeSheets(){ document.querySelectorAll(".sheet").forEach(x=>x.classList.remove("open")); }
+  document.querySelectorAll("nav.bottom [data-sheet]").forEach(b=>b.addEventListener("click", ()=>openSheet(b.dataset.sheet)));
+  document.querySelectorAll(".sheet").forEach(x=>{ x.addEventListener("click", (e)=>{ if (e.target===x) closeSheets(); }); x.querySelector(".close").addEventListener("click", closeSheets); });
+  document.addEventListener("keydown", (e)=>{ if (e.key==="Escape") closeSheets(); });
+  { const q = new URLSearchParams(location.search).get("sheet"); if (q) openSheet(q); }
+
   // ---- 테마 ----
   try{ const th=new URLSearchParams(location.search).get("theme")||localStorage.getItem("shuttle.theme"); if(th) document.documentElement.dataset.theme=th; }catch(e){}
-  $("#themeBtn").addEventListener("click",(e)=>{ e.preventDefault();
+  $("#themeBtn").addEventListener("click",(e)=>{
     const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
     const nx = cur==="dark"?"light":"dark"; document.documentElement.dataset.theme=nx; try{ localStorage.setItem("shuttle.theme",nx);}catch(e){} });
 
   // ---- 정적 부분 ----
   $("#notes").innerHTML = T.notes.map(n=>`<li>${n}</li>`).join("");
-  $("#srcDate").textContent = T.source_date;
+  $("#srcDate").textContent = T.source_date; $("#srcDate2").textContent = T.source_date;
   {
     const y = now().getFullYear();
     const byYear = {};
@@ -285,7 +310,7 @@ footer a{color:var(--accent)}
     return {i:s.length-1, f:0};
   }
   // 가로로 긴 둥근 고리 위에 정류장을 놓고 버스가 그 위를 돈다 (순환 노선)
-  const RING = {w:440, h:244, x0:104, y0:54, x1:336, y1:190};
+  const RING = {w:440, h:196, x0:96, y0:62, x1:344, y1:134};
   const NS = "http://www.w3.org/2000/svg";
   const el = (tag, attrs)=>{ const e=document.createElementNS(NS,tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
   const ringName = (n)=>n.replace(/\s*도착$/,"");
@@ -424,7 +449,7 @@ footer a{color:var(--accent)}
     });
   }
 
-  // 처음 열 때: 시간대에 맞춰 (09시 전 = 오전, 그 외 = 낮·오후). ?tab=morning|day|info|orig 로 지정 가능
+  // 처음 열 때: 시간대에 맞춰 (09시 전 = 오전, 그 외 = 낮·오후). ?tab=morning|day 로 지정 가능, ?sheet=info|orig 로 시트 열기
   if (!tab || !document.getElementById("tab-"+tab)) tab = (now().getHours() < 9) ? "morning" : "day";
   showTab(tab);
   render();
