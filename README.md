@@ -53,7 +53,16 @@ systemctl --user status shuttle-web
 journalctl --user -u shuttle-web -f
 ```
 
-업데이트: `cd ~/git/shuttle && git pull` (시간표·페이지는 바로 반영, `shuttle_web.py` 가 바뀌었으면 `systemctl --user restart shuttle-web`).
+업데이트: 서버에 git 이 있으면 `cd ~/git/shuttle && git pull`. 없으면(현재 집 서버 j-linux 가 그렇습니다) 이 PC 에서 압축해 복사합니다:
+
+```bash
+# 이 PC 에서
+tar czf /tmp/shuttle-deploy.tar.gz --transform 's#^#shuttle/#' shuttle_web.py install.sh systemd web assets/shuttle.apk README.md
+scp -P 9812 /tmp/shuttle-deploy.tar.gz seungjunn@seungjunn.iptime.org:/tmp/
+ssh -p 9812 seungjunn@seungjunn.iptime.org 'cd ~/git && tar xzf /tmp/shuttle-deploy.tar.gz && rm /tmp/shuttle-deploy.tar.gz && cd shuttle && SHUTTLE_DIR=$PWD bash install.sh'
+```
+
+시간표·페이지만 바뀌었으면 복사만으로 반영되고, `shuttle_web.py` 가 바뀌었으면 `install.sh` 가 서비스를 재시작합니다.
 
 - 주소: `http://192.168.100.140:8782` (집 안) / `http://100.86.158.27:8782` (Tailscale). 포트 8781 은 하기숲이 쓰므로 8782.
 - 바인딩 주소·포트는 유닛 파일의 `SHUTTLE_HOSTS`, `SHUTTLE_PORT` 환경변수. `0.0.0.0` 은 쓰지 않습니다.
