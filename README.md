@@ -47,11 +47,13 @@ JSON 모양의 자바스크립트 파일입니다. 고친 뒤 페이지를 새�
 ## 서버 설치 (집 서버)
 
 ```bash
-scp -r 261021_꿈에그린셔틀 server:~/git/shuttle     # 또는 git clone
+git clone https://github.com/seungjunn/shuttle.git ~/git/shuttle
 cd ~/git/shuttle && SHUTTLE_DIR=$PWD bash install.sh # 생략하면 ~/shuttle 로 복사해서 설치
 systemctl --user status shuttle-web
 journalctl --user -u shuttle-web -f
 ```
+
+업데이트: `cd ~/git/shuttle && git pull` (시간표·페이지는 바로 반영, `shuttle_web.py` 가 바뀌었으면 `systemctl --user restart shuttle-web`).
 
 - 주소: `http://192.168.100.140:8782` (집 안) / `http://100.86.158.27:8782` (Tailscale). 포트 8781 은 하기숲이 쓰므로 8782.
 - 바인딩 주소·포트는 유닛 파일의 `SHUTTLE_HOSTS`, `SHUTTLE_PORT` 환경변수. `0.0.0.0` 은 쓰지 않습니다.
