@@ -53,7 +53,7 @@ systemctl --user status shuttle-web
 journalctl --user -u shuttle-web -f
 ```
 
-업데이트: 서버에 git 이 있으면 `cd ~/git/shuttle && git pull`. 없으면(현재 집 서버 j-linux 가 그렇습니다) 이 PC 에서 압축해 복사합니다:
+업데이트: `cd ~/git/shuttle && git pull` (집 서버 `~/git/shuttle` 은 이 저장소의 clone). git 이 없는 서버라면 이 PC 에서 압축해 복사합니다:
 
 ```bash
 # 이 PC 에서
