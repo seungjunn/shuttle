@@ -83,17 +83,18 @@ tr.past td{opacity:var(--dim)} tr.next td{background:var(--now)} tr.next td:firs
 td.sel,th.sel{background:var(--soft);color:var(--soft-ink);font-weight:700}
 tr.next td.sel{background:var(--soft)}
 tr.hasnote td:first-child::after{content:" ⚠";color:var(--warn);font-size:.75rem}
-.strip{position:relative;padding-left:28px;margin-top:8px}
-.strip::before{content:"";position:absolute;left:10px;top:14px;bottom:14px;width:3px;background:var(--line);border-radius:2px}
-.strip .st{position:relative;height:30px;display:flex;align-items:center;font-size:.9rem;color:var(--muted);white-space:nowrap}
-.strip .st::before{content:"";position:absolute;left:-23px;width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--muted);box-sizing:border-box}
-.strip .st.sel{color:var(--soft-ink);font-weight:700} .strip .st.sel::before{border-color:var(--accent);background:var(--soft)}
-.strip .bus{position:absolute;left:0;right:0;transform:translateY(-50%);display:flex;align-items:center;transition:top 1s ease;z-index:2;pointer-events:none}
-.strip .bus .ico{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,.35)}
-.strip .bus.r1 .ico{background:var(--r1)} .strip .bus.r2 .ico{background:var(--r2)}
-.strip .bus .lbl{margin-left:auto;font-size:.74rem;font-weight:700;color:#fff;border-radius:6px;padding:2px 7px;white-space:nowrap}
-.strip .bus.r1 .lbl{background:var(--r1)} .strip .bus.r2 .lbl{background:var(--r2)}
-.strip .bus.wait{opacity:.55}
+svg.ring{width:100%;height:auto;display:block;margin-top:6px;overflow:visible}
+svg.ring .track{fill:none;stroke:var(--line);stroke-width:4;stroke-linejoin:round}
+svg.ring .stop{fill:var(--card);stroke:var(--muted);stroke-width:2}
+svg.ring .stop.sel{fill:var(--soft);stroke:var(--accent);stroke-width:2.5}
+svg.ring text.lbl{font-size:12px;fill:var(--muted);font-weight:600}
+svg.ring text.lbl.sel{fill:var(--soft-ink);font-weight:800}
+svg.ring text.lbl .sub{font-size:10px;font-weight:500}
+svg.ring .busg{transition:transform 1s ease}
+svg.ring .busg rect{stroke:#fff;stroke-width:1.5;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+svg.ring .busg.r1 rect{fill:var(--r1)} svg.ring .busg.r2 rect{fill:var(--r2)}
+svg.ring .busg text{font-size:10px;font-weight:800;fill:#fff}
+svg.ring .busg.wait{opacity:.55}
 .busline{font-size:.92rem;margin:4px 0}
 .busline b{color:var(--ink)}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:10px}
@@ -283,16 +284,60 @@ footer a{color:var(--accent)}
     for (let i=0;i<s.length-1;i++) if (nowSec < s[i+1].sec){ const span = s[i+1].sec - s[i].sec; return {i, f: span>0 ? (nowSec-s[i].sec)/span : 0}; }
     return {i:s.length-1, f:0};
   }
-  const ROW = 30;
-  function stripHtml(stops, buses, nowSec, wait){
-    const rows = stops.map(x=>`<div class="st ${x.name===stop?"sel":""}">${x.name}</div>`).join("");
-    const marks = buses.map(b=>{ const p=busPos(b,nowSec); return `<div class="bus ${routeCls(b.route)} ${wait?"wait":""}" data-id="${b.no}" style="top:${(p.i+p.f)*ROW+ROW/2}px"><span class="ico">🚌</span><span class="lbl">${b.route} ${b.no}회차${wait?" 대기":""}</span></div>`; }).join("");
-    return `<div class="strip" style="height:${stops.length*ROW}px">${rows}${marks}</div>`;
+  // 가로로 긴 둥근 고리 위에 정류장을 놓고 버스가 그 위를 돈다 (순환 노선)
+  const RING = {w:440, h:244, x0:104, y0:54, x1:336, y1:190};
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs)=>{ const e=document.createElementNS(NS,tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+  const ringName = (n)=>n.replace(/\s*도착$/,"");
+  function ringNames(stops){ const out=[]; for (const x of stops){ const n=ringName(x.name); if (!out.includes(n)) out.push(n); } return out; }
+  function busRingFrac(b, names, nowSec){   // 고리 둘레의 0~1 위치
+    const p = busPos(b, nowSec), s = b.stops, n = names.length;
+    const ri = names.indexOf(ringName(s[p.i].name));
+    if (p.i >= s.length-1) return ri/n;
+    const rj = names.indexOf(ringName(s[p.i+1].name));
+    const delta = ((rj-ri)%n+n)%n;
+    return ((ri + delta*p.f)/n) % 1;
+  }
+  let rings = [];
+  function buildRing(container, names, buses, nowSec, wait){
+    const r = (RING.y1-RING.y0)/2;
+    const svg = el("svg", {viewBox:`0 0 ${RING.w} ${RING.h}`, class:"ring"});
+    const path = el("path", {class:"track", d:`M${RING.x0+r},${RING.y0} H${RING.x1-r} A${r},${r} 0 0 1 ${RING.x1-r},${RING.y1} H${RING.x0+r} A${r},${r} 0 0 1 ${RING.x0+r},${RING.y0} Z`});
+    svg.appendChild(path); container.appendChild(svg);
+    const L = path.getTotalLength(), n = names.length, cx=(RING.x0+RING.x1)/2, cy=(RING.y0+RING.y1)/2;
+    names.forEach((name,i)=>{
+      const pt = path.getPointAtLength(L*i/n);
+      const nx = (pt.x-cx)/((RING.x1-RING.x0)/2), ny = (pt.y-cy)/((RING.y1-RING.y0)/2);
+      svg.appendChild(el("circle", {cx:pt.x, cy:pt.y, r:5.5, class:"stop"+(name===stop?" sel":"")}));
+      const m = name.match(/^(.*?)\((.*)\)$/), lines = m ? 2 : 1;
+      const top = ny < -0.35, bottom = ny > 0.35;
+      const x = pt.x + nx*14, y = pt.y + ny*14 - (top && lines===2 ? 11 : 0);
+      const t = el("text", {x, y, class:"lbl"+(name===stop?" sel":""), "text-anchor": nx>0.35?"start":nx<-0.35?"end":"middle",
+                             "dominant-baseline": bottom?"hanging":top?"auto":"middle"});
+      if (m){ const a=el("tspan",{}); a.textContent=m[1]; const b=el("tspan",{x, dy:"1.15em", class:"sub"}); b.textContent="("+m[2]+")"; t.appendChild(a); t.appendChild(b); }
+      else t.textContent = name;
+      svg.appendChild(t);
+    });
+    for (const b of buses){
+      const pt = path.getPointAtLength((busRingFrac(b, names, nowSec)*L) % L);
+      const g = el("g", {class:"busg "+routeCls(b.route)+(wait?" wait":""), "data-id":b.no, transform:`translate(${pt.x} ${pt.y})`});
+      g.appendChild(el("rect", {x:-20, y:-10, width:40, height:20, rx:7}));
+      const tx = el("text", {"text-anchor":"middle", "dominant-baseline":"central"}); tx.textContent = b.route; g.appendChild(tx);
+      svg.appendChild(g);
+    }
+    rings.push({svg, path, L, names, buses});
+  }
+  function moveBuses(ring, nowSec){
+    for (const b of ring.buses){
+      const g = ring.svg.querySelector(`.busg[data-id="${b.no}"]`); if (!g) continue;
+      const pt = ring.path.getPointAtLength((busRingFrac(b, ring.names, nowSec)*ring.L) % ring.L);
+      g.style.transform = `translate(${pt.x}px,${pt.y}px)`;
+    }
   }
   let mapKey = "";
   function renderMap(st, nowSec){
     const box = $("#busMap");
-    if (!st.ok){ box.innerHTML = `<p class="empty">${st.text}</p>`; mapKey=""; return; }
+    if (!st.ok){ box.innerHTML = `<p class="empty">${st.text}</p>`; mapKey=""; rings=[]; return; }
     const act = TRIPS.filter(b=>nowSec >= b.stops[0].sec && nowSec <= b.stops[b.stops.length-1].sec + 60);
     const next = act.length ? null : TRIPS.find(b=>b.stops[0].sec > nowSec);
     const key = (act.length ? act.map(b=>b.no).join(",") : "wait"+(next?next.no:"")) + "|" + stop;
@@ -302,20 +347,19 @@ footer a{color:var(--accent)}
       return `<div class="busline">${routeTag(b.route)} ${b.no}회차 · ${where}</div>`;
     }).join("");
     if (key !== mapKey){
-      mapKey = key;
-      let html = `<div id="busLines">${lines}</div>`;
+      mapKey = key; rings = [];
+      box.innerHTML = `<div id="busLines">${lines}</div>`;
       if (!act.length){
-        html = `<p class="empty">${next ? `운행 중인 버스가 없습니다. 다음 출발 <b>${fmtSec(next.stops[0].sec)}</b> ${next.stops[0].name} (${next.no}회차 ${next.route})` : "오늘 운행이 끝났습니다."}</p>`;
-        if (next) html += stripHtml(next.kind==="day" ? T.day.stops.map(n=>({name:n})) : next.stops, [next], nowSec, true);
+        box.innerHTML = `<p class="empty">${next ? `운행 중인 버스가 없습니다. 다음 출발 <b>${fmtSec(next.stops[0].sec)}</b> ${next.stops[0].name} (${next.no}회차 ${next.route})` : "오늘 운행이 끝났습니다."}</p>`;
+        if (next) buildRing(box, ringNames(next.stops), [next], nowSec, true);
       } else {
         const dayB = act.filter(b=>b.kind==="day");
-        if (dayB.length) html += stripHtml(T.day.stops.map(n=>({name:n})), dayB, nowSec, false);
-        for (const b of act.filter(b=>b.kind==="morning")) html += stripHtml(b.stops, [b], nowSec, false);
+        if (dayB.length) buildRing(box, ringNames(dayB[0].stops), dayB, nowSec, false);
+        for (const b of act.filter(b=>b.kind==="morning")) buildRing(box, ringNames(b.stops), [b], nowSec, false);
       }
-      box.innerHTML = html;
     } else if (act.length){
       $("#busLines").innerHTML = lines;
-      for (const b of act){ const p=busPos(b,nowSec); const el=box.querySelector(`.bus[data-id="${b.no}"]`); if (el) el.style.top = `${(p.i+p.f)*ROW+ROW/2}px`; }
+      for (const ring of rings) moveBuses(ring, nowSec);
     }
   }
 
